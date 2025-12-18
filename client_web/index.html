@@ -88,6 +88,9 @@
       <button type="submit">Générer</button>
     </form>
     <div class="status" id="status"></div>
+    <div style="font-size:12px;color:#b45309;margin:6px 0 12px 0;">
+      Note : en mode async, chaque PDF/ZIP reste disponible 5 minutes après le premier téléchargement.
+    </div>
     <div class="log" id="log"></div>
     <a class="btn" id="download" href="#" target="_blank" style="display:none;">Télécharger le PDF</a>
 
@@ -144,6 +147,20 @@
       </div>
       <div class="load-progress" id="load-progress">Prêt</div>
     </div>
+
+    <div class="loadtest" style="margin-top:14px;">
+      <h4>Batch multi-élèves (ZIP)</h4>
+      <p style="font-size:13px;color:#5f6b84;margin:4px 0 8px 0;">
+        1 ligne = <code>student_id term type</code> (type = BULLETIN ou HONOR). Exemple : <code>3 T1 BULLETIN</code>
+      </p>
+      <textarea id="batch-lines" rows="6" style="width:100%;font-family:monospace;border:1px solid #ced4e0;border-radius:10px;padding:10px;"></textarea>
+      <div class="row" style="gap:8px;margin-top:8px;">
+        <button type="button" class="pill" id="btn-batch-send" style="flex:1;">Lancer le batch</button>
+        <button type="button" class="pill" id="btn-batch-status" style="flex:1;">Rafraîchir statut</button>
+      </div>
+      <div class="load-progress" id="batch-progress">Aucun batch en cours</div>
+      <a class="btn" id="batch-download" href="#" target="_blank" style="display:none;">Télécharger le ZIP</a>
+    </div>
   </div>
 
   <script>
@@ -165,10 +182,16 @@
     const metricsReconnect = document.getElementById("metrics-reconnect");
     const loadButtons = Array.from(document.querySelectorAll(".load-buttons .pill"));
     const loadProgress = document.getElementById("load-progress");
+    const batchLines = document.getElementById("batch-lines");
+    const batchProgress = document.getElementById("batch-progress");
+    const batchDownload = document.getElementById("batch-download");
+    const btnBatchSend = document.getElementById("btn-batch-send");
+    const btnBatchStatus = document.getElementById("btn-batch-status");
     let ws = null;
     let loadRunning = false;
     let latestMetrics = {pending:0, ready:0, failed:0};
     let waiters = [];
+    let currentBatchId = null;
 
     function setType(type){
       typeInput.value = type;
@@ -277,9 +300,10 @@
     async function poll(host, id, auth){
       for(let i=0;i<30;i++){
         const data = await apiFetch(`${host}/api/documents/${id}/download/`, {headers:{Authorization:auth}});
-        if(data.path || data.pdf_url){
+        const href = data.download_url || data.url || data.pdf_url || data.path;
+        if(href){
           statusBox.textContent = "Document prêt";
-          download.href = data.path || data.pdf_url;
+          download.href = href.startsWith("http") ? href : `${host}${href}`;
           download.style.display = "inline-block";
           return;
         }
@@ -462,6 +486,69 @@
         simulateLoad(total);
       });
     });
+
+    function parseBatchItems(){
+      const lines = batchLines.value.split(/\n/).map(l=>l.trim()).filter(Boolean);
+      return lines.map(l=>{
+        const [student, term, typeRaw] = l.split(/\s+/);
+        return {
+          student_id: Number(student),
+          term: term || "T1",
+          type: (typeRaw || "BULLETIN").toUpperCase()
+        };
+      });
+    }
+
+    async function sendBatch(){
+      const items = parseBatchItems();
+      if(items.length === 0){
+        batchProgress.textContent = "Aucune ligne valide";
+        return;
+      }
+      const fd = new FormData(form);
+      const host = fd.get("host").replace(/\/$/,"");
+      const auth = "Basic " + btoa(`${fd.get("user")}:${fd.get("password")}`);
+      try{
+        const resp = await apiFetch(`${host}/api/batches/`, {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization": auth
+          },
+          body: JSON.stringify({items})
+        });
+        currentBatchId = resp.batch_id;
+        batchProgress.textContent = `Batch ${resp.batch_id} en cours (${resp.count} docs)`;
+        batchDownload.style.display = "none";
+      }catch(err){
+        batchProgress.textContent = err.message;
+      }
+    }
+
+    async function refreshBatch(){
+      if(!currentBatchId){
+        batchProgress.textContent = "Aucun batch à suivre";
+        return;
+      }
+      const fd = new FormData(form);
+      const host = fd.get("host").replace(/\/$/,"");
+      const auth = "Basic " + btoa(`${fd.get("user")}:${fd.get("password")}`);
+      try{
+        const resp = await apiFetch(`${host}/api/batches/${currentBatchId}/`, {
+          headers: {"Authorization": auth}
+        });
+        batchProgress.textContent = `Batch ${resp.id} — statut ${resp.status} (ready=${resp.counts.READY || 0}, pending=${resp.counts.PENDING || 0}, failed=${resp.counts.FAILED || 0})`;
+        if(resp.zip_url){
+          batchDownload.href = resp.zip_url.startsWith("http") ? resp.zip_url : `${host}${resp.zip_url}`;
+          batchDownload.style.display = "inline-block";
+        }
+      }catch(err){
+        batchProgress.textContent = err.message;
+      }
+    }
+
+    btnBatchSend.addEventListener("click", sendBatch);
+    btnBatchStatus.addEventListener("click", refreshBatch);
   </script>
 </body>
 </html>

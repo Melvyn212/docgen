@@ -1,5 +1,7 @@
 from pathlib import Path
 import logging
+import os
+from datetime import timedelta
 
 from celery import shared_task
 from django.conf import settings
@@ -39,3 +41,73 @@ def generate_document(self, document_id: int):
         doc.save(update_fields=["status", "completed_at"])
         mark_failed(doc.id)
         raise
+
+
+def _ttl_seconds():
+    try:
+        return int(getattr(settings, "DOCUMENT_TTL_SECONDS", 300))
+    except Exception:
+        return 300
+
+
+@shared_task
+def purge_document_file(document_id: int):
+    doc = Document.objects.filter(id=document_id).first()
+    if not doc or not doc.first_download_at or not doc.pdf_path:
+        return
+    if timezone.now() - doc.first_download_at < timedelta(seconds=_ttl_seconds()):
+        return
+    try:
+        Path(doc.pdf_path).unlink(missing_ok=True)
+        doc.pdf_path = ""
+        doc.save(update_fields=["pdf_path"])
+        logger.info("Purged PDF after TTL", extra={"document_id": document_id, "path": doc.pdf_path})
+    except Exception as exc:
+        logger.warning("Failed to purge PDF for doc %s: %s", document_id, exc)
+
+
+@shared_task
+def purge_batch_zip(batch_id: int):
+    from documents.models import Batch  # lazy import to avoid cycles
+
+    batch = Batch.objects.filter(id=batch_id).first()
+    if not batch or not batch.first_download_at or not batch.zip_path:
+        return
+    if timezone.now() - batch.first_download_at < timedelta(seconds=_ttl_seconds()):
+        return
+    try:
+        Path(batch.zip_path).unlink(missing_ok=True)
+        batch.zip_path = ""
+        batch.save(update_fields=["zip_path"])
+        logger.info("Purged batch zip after TTL", extra={"batch_id": batch_id, "path": batch.zip_path})
+    except Exception as exc:
+        logger.warning("Failed to purge batch zip %s: %s", batch_id, exc)
+
+
+@shared_task
+def purge_expired(hours: int = 1):
+    cutoff = timezone.now() - timedelta(hours=hours)
+    deleted_docs = 0
+    for doc in Document.objects.filter(pdf_path__isnull=False).exclude(pdf_path=""):
+        ts = doc.first_download_at or doc.completed_at
+        if ts and ts < cutoff:
+            Path(doc.pdf_path).unlink(missing_ok=True)
+            doc.pdf_path = ""
+            doc.save(update_fields=["pdf_path"])
+            deleted_docs += 1
+
+    from documents.models import Batch
+
+    deleted_batches = 0
+    for batch in Batch.objects.filter(zip_path__isnull=False).exclude(zip_path=""):
+        ts = batch.first_download_at or batch.completed_at
+        if ts and ts < cutoff:
+            Path(batch.zip_path).unlink(missing_ok=True)
+            batch.zip_path = ""
+            batch.save(update_fields=["zip_path"])
+            deleted_batches += 1
+
+    logger.info(
+        "purge_expired done",
+        extra={"hours": hours, "deleted_docs": deleted_docs, "deleted_batches": deleted_batches},
+    )

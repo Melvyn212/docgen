@@ -1,0 +1,368 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
+
+% ==================================================
+% PAGE — 1 PAGE STRICTE (NOUVELLES MARGES)
+% ==================================================
+\usepackage[
+  a4paper,
+  top=1cm,
+  bottom=0.5cm,
+  left=1cm,
+  right=1cm
+]{geometry}
+\usepackage{parskip}
+\pagestyle{empty}
+\raggedbottom
+
+% ==================================================
+% LOGIQUE CONDITIONNELLE
+% ==================================================
+\usepackage{ifthen}
+
+% ==================================================
+% FONTS — PREMIUM
+% ==================================================
+\usepackage{fontspec}
+\IfFontExistsTF{TeX Gyre Pagella}
+  {\setmainfont[Ligatures=TeX,Numbers=OldStyle]{TeX Gyre Pagella}}
+  {\setmainfont{Times New Roman}}
+\IfFontExistsTF{IBM Plex Sans}
+  {\setsansfont{IBM Plex Sans}}
+  {\setsansfont{Arial}}
+
+% ==================================================
+% COULEURS — SOBRES
+% ==================================================
+\usepackage{xcolor}
+\definecolor{Bg}{HTML}{F9FAFB}
+\definecolor{Card}{HTML}{FFFFFF}
+\definecolor{Primary}{HTML}{111827}
+\definecolor{Muted}{HTML}{6B7280}
+\definecolor{FooterColor}{HTML}{1F2937}
+\definecolor{Accent}{HTML}{1F3A8A}
+
+\pagecolor{Bg}
+\color{Primary}
+
+% Helper: afficher seulement si valeur non vide et différente de "--"
+\newcommand{\ifnonemptyvalue}[2]{%
+  \if\relax\detokenize{#1}\relax
+  \else
+    \ifthenelse{\equal{#1}{--}}{}{#2}%
+  \fi
+}
+
+% ==================================================
+% ESPACEMENT (NOMBRE D’OR)
+% ==================================================
+\newcommand{\goldspace}{0.48em}
+
+% ==================================================
+% BOÎTES (mdframed)
+% ==================================================
+\usepackage{mdframed}
+\newmdenv[
+  linewidth=0pt,
+  backgroundcolor=Card,
+  roundcorner=2.5mm,
+  leftmargin=0pt,
+  rightmargin=0pt,
+  innertopmargin=3.2mm,
+  innerbottommargin=3.2mm,
+  innerleftmargin=4mm,
+  innerrightmargin=4mm,
+  skipabove=2pt,
+  skipbelow=2pt
+]{CardBox}
+
+% ==================================================
+% TABLES
+% ==================================================
+\usepackage{tabularx}
+\usepackage{booktabs}
+\renewcommand{\arraystretch}{1.08}
+
+% ==================================================
+% GRAPHICS & TIKZ
+% ==================================================
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+% ==================================================
+% MICROTYPE
+% ==================================================
+\usepackage{microtype}
+
+% ==================================================
+% DONNÉES (PROVIDE POUR INJECTION JSON)
+% ==================================================
+\providecommand{\TRIMCODE}{T1}
+\providecommand{\TERMLABEL}{Trimestre 1}
+\providecommand{\ACADEMICYEAR}{2025--2026}
+\providecommand{\SCHOOLNAME}{Lycée Démo}
+\providecommand{\SCHOOLCOUNTRY}{Pays}
+\providecommand{\SCHOOLCITY}{Ville}
+\providecommand{\SCHOOLPHONE}{}
+\providecommand{\SCHOOLEMAIL}{}
+\providecommand{\SCHOOLADDRESS}{}
+\providecommand{\STUDENTNAME}{Nom Prénom}
+\providecommand{\CLASSNAME}{Classe}
+\providecommand{\MATRICULE}{0000}
+\providecommand{\CLASSSIZE}{30}
+\providecommand{\AVGVAL}{--}
+\providecommand{\WEIGHTEDVAL}{--}
+\providecommand{\RANKVAL}{--}
+\providecommand{\HONORVAL}{--}
+\providecommand{\CLASSBEST}{--}
+\providecommand{\CLASSAVG}{--}
+\providecommand{\CLASSMIN}{--}
+\providecommand{\MAINROWS}{\textit{À compléter} & -- & -- & \textit{Notes à insérer} & -- \\}
+\providecommand{\COMPROWS}{\textit{À compléter} & -- & -- & \textit{Notes à insérer} & -- \\}
+\providecommand{\MAINAVG}{--}
+\providecommand{\COMPAVG}{--}
+\providecommand{\YEARAVG}{--}
+\providecommand{\TRIMONEAVG}{--}
+\providecommand{\TRIMTWOAVG}{--}
+\providecommand{\GENERALAPP}{Félicitations pour vos efforts.}
+\providecommand{\CONDUCT}{Bonne}
+\providecommand{\SANCTION}{N/A}
+\providecommand{\TODAYVAL}{\today}
+
+% ==================================================
+% LOGO (optionnel) — par défaut dans assets/
+% ==================================================
+\newcommand{\logopath}{./assets/logo.png}
+\newcommand{\PrintLogo}[1]{\IfFileExists{\logopath}{\includegraphics[#1]{\logopath}}{}}
+
+% ==================================================
+% DOCUMENT
+% ==================================================
+% injected
+\def\TRIMCODE{1}
+\def\TERMLABEL{Trimestre 1}
+\def\ACADEMICYEAR{2024-2025}
+\def\SCHOOLNAME{Les Écoles de l'Honneur}
+\def\SCHOOLCOUNTRY{Burkina Faso}
+\def\SCHOOLCITY{Ouagadougou}
+\def\SCHOOLADDRESS{Rue de la Démo}
+\def\SCHOOLPHONE{226 25 30 40 50}
+\def\SCHOOLEMAIL{l@lesecolesdelhonneur.bf}
+\def\STUDENTNAME{Mariam Traore}
+\def\CLASSNAME{Terminale A}
+\def\MATRICULE{M010003}
+\def\CLASSSIZE{10}
+\def\AVGVAL{15.09}
+\def\WEIGHTEDVAL{452.78}
+\def\RANKVAL{1}
+\def\HONORVAL{Oui}
+\def\CLASSBEST{15.09}
+\def\CLASSAVG{13.81}
+\def\CLASSMIN{12.85}
+\def\MAINROWS{Anglais & 18.00 & 3.00 & Bien & Mme Zoungrana \\Arts plastiques & 13.82 & 1.00 & Bien & Mme Ilboudo \\Chimie & 13.50 & 3.00 & Bien & M. Kinda \\EMC & 10.00 & 1.00 & Bien & Mme Kaboré \\EPS & 14.48 & 1.00 & Bien & M. Sanou \\Français & 16.00 & 4.00 & Bien & M. Diallo \\Histoire-Géo & 11.03 & 2.00 & Bien & M. Ouédraogo \\}
+\def\COMPROWS{Informatique & 15.87 & 2.00 & Bien & Mme Zongo \\Mathématiques & 15.00 & 5.00 & Bien & Mme Traoré \\Philosophie & 10.76 & 2.00 & Bien & M. Rouamba \\Physique & 15.53 & 4.00 & Bien & Mme Ouoba \\Physique-Chimie & 17.00 & 4.00 & Bien & M. Ouédraogo \\SVT & 17.00 & 3.00 & Bien & Mme Kaboré \\}
+\def\MAINAVG{14.59}
+\def\COMPAVG{15.47}
+\def\YEARAVG{15.09}
+\def\TRIMONEAVG{15.09}
+\def\TRIMTWOAVG{15.09}
+\def\GENERALAPP{Assiduité : 18/20. Ponctualité : 16/20.
+Comportement : 16/20. Participation : 15/20.}
+\def\CONDUCT{16}
+\def\SANCTION{N/A}
+\def\TODAYVAL{18 décembre 2025}
+\def\logopath{/Users/melvyndehunde-agblo/wrkdir/docgen/assets/logo.png}
+\begin{document}
+
+% ==================================================
+% HEADER
+% ==================================================
+\begin{minipage}{0.17\linewidth}
+\PrintLogo{width=\linewidth}
+\end{minipage}
+\hfill
+\begin{minipage}{0.80\linewidth}
+{\sffamily\bfseries\Large Bulletin académique}\qquad
+{\tikz[baseline]\node[fill=Accent!12,rounded corners=6pt,inner xsep=8pt,inner ysep=3pt,text=Accent,font=\sffamily\footnotesize]{\TERMLABEL};}\\[-0.2em]
+{\color{Muted}Année scolaire \ACADEMICYEAR}
+
+\vspace{\goldspace}
+
+{\bfseries \SCHOOLNAME}\\
+{\color{Muted}\small
+\SCHOOLADDRESS\ifthenelse{\equal{\SCHOOLADDRESS}{}}{}{ — }
+\SCHOOLCITY\ifthenelse{\equal{\SCHOOLCITY}{}}{}{ — }\SCHOOLCOUNTRY\\
+\ifthenelse{\equal{\SCHOOLPHONE}{}}{}{\SCHOOLPHONE}
+\ifthenelse{\equal{\SCHOOLEMAIL}{}}{}{ \quad • \quad \SCHOOLEMAIL}
+}
+\end{minipage}
+
+\vspace{0.4em}
+
+% ==================================================
+% INFOS ÉLÈVE
+% ==================================================
+\begin{CardBox}
+\begin{tabularx}{\linewidth}{X X}
+\textbf{Élève} : \STUDENTNAME &
+\textbf{Classe} : \CLASSNAME \\
+\textbf{Matricule} : \MATRICULE &
+\textbf{Effectif} : \CLASSSIZE\ élèves
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% SYNTHÈSE
+% ==================================================
+\begin{CardBox}
+\begin{tabularx}{\linewidth}{X X X X}
+\textbf{Moyenne générale} &
+\textbf{Total pondéré} &
+\textbf{Rang} &
+\textbf{Tableau d’honneur} \\
+\sffamily\bfseries \AVGVAL\ / 20 & \WEIGHTEDVAL & \RANKVAL\ / \CLASSSIZE & \HONORVAL
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% RAPPEL MOYENNES — UNIQUEMENT T3 (CODE "3" OU "T3") ET SI DONNÉES RENSEIGNÉES
+% ==================================================
+\ifthenelse{\equal{\TRIMCODE}{3} \OR \equal{\TRIMCODE}{T3}}{%
+  \ifnonemptyvalue{\YEARAVG}{%
+    \begin{CardBox}
+    \begin{tabularx}{\linewidth}{X X X}
+    \textbf{Moyenne annuelle} &
+    \textbf{Rappel Trimestre 1} &
+    \textbf{Rappel Trimestre 2} \\
+    \sffamily\bfseries \YEARAVG\ / 20 & \TRIMONEAVG\ / 20 & \TRIMTWOAVG\ / 20
+    \end{tabularx}
+    \end{CardBox}
+  }
+}{}
+
+% ==================================================
+% MATIÈRES PRINCIPALES
+% ==================================================
+\begin{CardBox}
+\small
+\textbf{Matières principales}
+\vspace{0.2em}
+
+\begin{tabularx}{\linewidth}{X c c c X}
+\toprule
+Matière & Moy. & Coef. & Appr. & Professeur \\
+\midrule
+\MAINROWS
+\midrule
+\multicolumn{4}{r}{\textbf{Moyenne matières principales}} &
+\textbf{\sffamily \MAINAVG\ / 20} \\
+\bottomrule
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% MATIÈRES COMPLÉMENTAIRES
+% ==================================================
+\begin{CardBox}
+\small
+\textbf{Matières complémentaires}
+\vspace{0.2em}
+
+\begin{tabularx}{\linewidth}{X c c c X}
+\toprule
+Matière & Moy. & Coef. & Appr. & Professeur \\
+\midrule
+\COMPROWS
+\midrule
+\multicolumn{4}{r}{\textbf{Moyenne matières complémentaires}} &
+\textbf{\sffamily \COMPAVG\ / 20} \\
+\bottomrule
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% DONNÉES DE LA CLASSE
+% ==================================================
+\begin{CardBox}
+\begin{tabularx}{\linewidth}{X X X}
+\textbf{Moyenne du meilleur élève} &
+\textbf{Moyenne de la classe} &
+\textbf{Plus faible moyenne} \\
+\CLASSBEST\ / 20 & \CLASSAVG\ / 20 & \CLASSMIN\ / 20
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% APPRÉCIATION + CONDUITE / SANCTION
+% ==================================================
+\begin{CardBox}
+\begin{tabularx}{\linewidth}{
+  >{\raggedright\arraybackslash}X
+  !{\color{Muted}\vrule width 0.4pt}
+  >{\raggedright\arraybackslash}p{0.28\linewidth}
+}
+
+\textbf{Appréciation générale}
+
+\vspace{0.3em}
+
+\vbox to 2.4\baselineskip{%
+\GENERALAPP
+\vss}
+&
+\textbf{Conduite :} \CONDUCT
+
+\vspace{0.4em}
+
+\textbf{Sanction :} \SANCTION
+
+\end{tabularx}
+\end{CardBox}
+
+% ==================================================
+% LOCALISATION — BAS GAUCHE
+% ==================================================
+\AddToHook{shipout/foreground}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[
+      anchor=south west,
+      align=left
+    ] at ($(current page.south west)+(1cm,1.1cm)$) {%
+      \textbf{Fait à }%
+      \SCHOOLCITY\ifthenelse{\equal{\SCHOOLCITY}{}}{}{\ifthenelse{\equal{\SCHOOLCOUNTRY}{}}{}{, \SCHOOLCOUNTRY}}%
+      \textbf{, le }%
+      \TODAYVAL
+    };
+  \end{tikzpicture}
+}
+
+% ==================================================
+% SIGNATURE — FIXÉE BAS DROIT
+% ==================================================
+\AddToHook{shipout/foreground}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \node[
+      anchor=south east,
+      align=right
+    ] at ($(current page.south east)+(-1cm,1.1cm)$) {%
+      \textbf{Chef d’établissement}\\[2.4em]
+      \rule{6cm}{0.4pt}
+    };
+  \end{tikzpicture}
+}
+
+% ==================================================
+% FOOTER
+% ==================================================
+\AddToHook{shipout/foreground}{%
+  \begin{tikzpicture}[remember picture,overlay]
+    \draw[
+      FooterColor,
+      line width=1.4pt
+    ] ($(current page.south west)+(1cm,0.9cm)$)
+      -- ($(current page.south east)+(-1cm,0.9cm)$);
+  \end{tikzpicture}
+}
+
+\end{document}

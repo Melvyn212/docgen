@@ -28,7 +28,7 @@ python manage.py createsuperuser
 - Django : `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`
 - DB : `DB_ENGINE`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
 - Celery : `CELERY_BROKER_URL`, `CELERY_RESULT_BACKEND`, `CELERY_WORKER_CONCURRENCY`, `CELERY_WORKER_PREFETCH_MULTIPLIER`
-- LaTeX : `XELATEX_BIN`, `LATEX_TMP_DIR`, `LATEX_DEFAULT_PASSES` (défaut 2)
+- LaTeX : `XELATEX_BIN`, `LATEX_TMP_DIR`, `LATEX_DEFAULT_PASSES` (défaut 2), `DOCUMENT_TTL_SECONDS`
 - Logs LaTeX : `LATEX_LOG_DIR` (sinon fallback `media/latex_logs`)
 - Thèmes : `BULLETIN_THEME_FILE`, `HONOR_THEME_FILE`
 - Stockage : `DOCUMENT_STORAGE` (`local` par défaut, `s3`), `DOCUMENT_BASE_URL`, `DOCUMENT_STORAGE_PATH` (local), ou `AWS_*` si S3.
@@ -87,6 +87,13 @@ Renvoie directement le PDF (`Content-Disposition: attachment`), aucun `Document`
 ## Logs LaTeX
 - Archivés automatiquement dans `media/latex_logs/<doc_type>/` à chaque génération (inclut `.log`, `.compile.log`, `.tex`).
 - Purge : `python manage.py purge_latex_logs --days 7` (ou `--max-files`).
+
+## Purge / TTL
+- PDFs locaux : `python manage.py purge_pdfs` (supprime tout) ou avec `--days 7` / `--max-files`.
+- ZIP de batch : `python manage.py purge_batches` (supprime tout) ou avec `--days 7` / `--max-files`.
+- Purge temporelle (1h par défaut) : `python manage.py purge_expired_docs --hours 1`.
+- À programmer en cron (par ex. quotidien) si vous ne souhaitez pas garder de stockage long terme.
+- TTL après premier téléchargement (async) : le premier `GET /api/documents/{id}/download/` ou `/api/batches/{id}/download/` déclenche une purge automatique après `DOCUMENT_TTL_SECONDS` (défaut 3s dans les settings actuels). Les endpoints `/stream/` ne stockent rien.
 
 ## Client web de test
 - Fichier : `client_web/index.html`

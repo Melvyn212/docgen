@@ -19,6 +19,7 @@ class Document(models.Model):
     pdf_path = models.CharField(max_length=512, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    first_download_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.get_doc_type_display()} - {self.student} - {self.term}"
@@ -42,6 +43,7 @@ class Batch(models.Model):
     zip_path = models.CharField(max_length=512, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    first_download_at = models.DateTimeField(null=True, blank=True)
 
     def batches_dir(self) -> Path:
         return Path(getattr(settings, "MEDIA_ROOT", Path("."))) / "batches"

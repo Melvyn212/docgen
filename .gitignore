@@ -8,7 +8,15 @@
 *.xdv
 *.fls
 *.fdb_latexmk
+*.pyc
 
 # Dossiers temporaires
 _build/
 output/
+
+# Logs LaTeX générés (ne pas versionner)
+media/latex_logs/**/*.tex
+
+# Artefacts générés (media)
+media/*
+!media/.gitkeep

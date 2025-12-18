@@ -108,6 +108,8 @@ CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", 
 CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "75"))
 CELERY_WORKER_MAX_TASKS_PER_CHILD = int(os.environ.get("CELERY_WORKER_MAX_TASKS_PER_CHILD", "100"))
 CELERY_WORKER_CONCURRENCY = int(os.environ.get("CELERY_WORKER_CONCURRENCY", "7"))
+PURGE_EXPIRED_EVERY_SECONDS = int(os.environ.get("PURGE_EXPIRED_EVERY_SECONDS", "3700"))  # 0 = désactivé
+PURGE_EXPIRED_HOURS = int(os.environ.get("PURGE_EXPIRED_HOURS", "1"))  # seuil d'âge pour purge auto
 
 XELATEX_BIN = os.environ.get("XELATEX_BIN", "xelatex")
 LATEX_LOG_DIR = Path(os.environ.get("LATEX_LOG_DIR", "")) if os.environ.get("LATEX_LOG_DIR") else None
@@ -127,9 +129,19 @@ LATEX_THEME_FILES = {
 DOCUMENT_STORAGE = os.environ.get("DOCUMENT_STORAGE", "local")  # local or s3
 DOCUMENT_BASE_URL = os.environ.get("DOCUMENT_BASE_URL", "http://localhost:8000/media/documents/")
 DOCUMENT_STORAGE_PATH = Path(os.environ.get("DOCUMENT_STORAGE_PATH", MEDIA_ROOT / "documents"))
+DOCUMENT_TTL_SECONDS = int(os.environ.get("DOCUMENT_TTL_SECONDS", "900"))  # défaut 30 min
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL")
 AWS_REGION = os.environ.get("AWS_REGION")
+
+# Planification Celery Beat (optionnelle) pour purger les fichiers expirés
+CELERY_BEAT_SCHEDULE = {}
+if PURGE_EXPIRED_EVERY_SECONDS > 0:
+    CELERY_BEAT_SCHEDULE["purge-expired-docs"] = {
+        "task": "documents.tasks.purge_expired",
+        "schedule": PURGE_EXPIRED_EVERY_SECONDS,
+        "args": (PURGE_EXPIRED_HOURS,),
+    }

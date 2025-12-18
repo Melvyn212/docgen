@@ -8,7 +8,7 @@ from django.http import StreamingHttpResponse, HttpResponse, FileResponse
 from django.utils import timezone
 
 from documents.models import Document, Batch
-from documents.tasks import generate_document
+from documents.tasks import generate_document, purge_document_file, purge_batch_zip
 from documents.services.metrics import mark_pending, mark_failed
 from documents.services.builder import build_context
 from documents.services.latex_renderer import LatexRenderer
@@ -18,6 +18,47 @@ from documents.services.metrics import reset_metrics
 from pathlib import Path
 import zipfile
 import os
+import threading
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _file_url_for_doc(doc, request):
+    if doc.pdf_path and doc.pdf_path.startswith("http"):
+        return doc.pdf_path
+    base_url = getattr(settings, "DOCUMENT_BASE_URL", "").rstrip("/")
+    if doc.pdf_path and base_url:
+        return f"{base_url}/{os.path.basename(doc.pdf_path)}"
+    media_url = getattr(settings, "MEDIA_URL", "").rstrip("/")
+    media_root = getattr(settings, "MEDIA_ROOT", "")
+    if doc.pdf_path and media_root:
+        try:
+            rel = Path(doc.pdf_path).relative_to(media_root)
+            return request.build_absolute_uri(f"{media_url}/{rel}")
+        except Exception:
+            pass
+    return ""
+
+
+def _schedule_local_purge(path: str, ttl_seconds: int):
+    """Fallback si le worker Celery n’est pas dispo : purge locale après TTL."""
+    if not path or path.startswith("http"):
+        return
+    p = Path(path)
+
+    def _delete():
+        try:
+            p.unlink(missing_ok=True)
+            logger.info("Local purge executed", extra={"path": str(p)})
+        except Exception as exc:
+            logger.warning("Local purge failed", extra={"path": str(p), "error": str(exc)})
+
+    logger.info("Local purge scheduled", extra={"path": str(p), "ttl_seconds": ttl_seconds})
+    if ttl_seconds <= 0:
+        _delete()
+    else:
+        threading.Timer(ttl_seconds, _delete).start()
 
 
 class DocumentRequestSerializer(serializers.Serializer):
@@ -55,7 +96,14 @@ class GenerateBulletinView(APIView):
             if existing:
                 prev_status = existing.status
                 if existing.status == "READY":
-                    return Response({"id": existing.id, "status": existing.status}, status=status.HTTP_200_OK)
+                    return Response(
+                        {
+                            "id": existing.id,
+                            "status": existing.status,
+                            "pdf_url": _file_url_for_doc(existing, request),
+                        },
+                        status=status.HTTP_200_OK,
+                    )
                 if existing.status == "PENDING":
                     enqueue = False  # déjà en file, on ne duplique pas
                 doc = existing
@@ -116,7 +164,14 @@ class GenerateHonorView(APIView):
             if existing:
                 prev_status = existing.status
                 if existing.status == "READY":
-                    return Response({"id": existing.id, "status": existing.status}, status=status.HTTP_200_OK)
+                    return Response(
+                        {
+                            "id": existing.id,
+                            "status": existing.status,
+                            "pdf_url": _file_url_for_doc(existing, request),
+                        },
+                        status=status.HTTP_200_OK,
+                    )
                 if existing.status == "PENDING":
                     enqueue = False
                 doc = existing
@@ -153,7 +208,25 @@ class DownloadDocumentView(APIView):
 
     def get(self, request, pk):
         doc = get_object_or_404(Document, pk=pk, status="READY")
-        return Response({"path": doc.pdf_path, "id": doc.id, "type": doc.doc_type})
+        if not doc.pdf_path:
+            return Response({"detail": "PDF indisponible (purgé ou non généré)."}, status=status.HTTP_404_NOT_FOUND)
+        url = _file_url_for_doc(doc, request)
+        download_endpoint = request.build_absolute_uri(f"/api/documents/{doc.id}/download/")
+        if doc.first_download_at is None:
+            doc.first_download_at = timezone.now()
+            doc.save(update_fields=["first_download_at"])
+            ttl = int(getattr(settings, "DOCUMENT_TTL_SECONDS", 300))
+            purge_document_file.apply_async(args=[doc.id], countdown=ttl)
+            _schedule_local_purge(doc.pdf_path, ttl)
+        return Response(
+            {
+                "path": doc.pdf_path,
+                "url": url,
+                "download_url": download_endpoint,
+                "id": doc.id,
+                "type": doc.doc_type,
+            }
+        )
 
 
 class ResetMetricsView(APIView):
@@ -309,15 +382,14 @@ class BatchStatusView(APIView):
                 batch.completed_at = timezone.now()
                 batch.save(update_fields=["zip_path", "completed_at"])
             zip_path = str(batch.zip_full_path())
-            media_url = getattr(settings, "MEDIA_URL", "").rstrip("/")
-            if media_url:
-                zip_url = f"{media_url}/batches/{batch.zip_full_path().name}"
+            zip_url = request.build_absolute_uri(f"/api/batches/{batch.id}/download/")
 
         return Response(
             {
                 "id": batch.id,
                 "status": batch.status,
                 "counts": status_counts,
+                # Chemin local uniquement pour debug ; le lien à utiliser est zip_url
                 "zip_path": zip_path,
                 "zip_url": zip_url,
             }
@@ -332,6 +404,24 @@ class BatchDownloadView(APIView):
         zip_path = batch.zip_full_path()
         if not zip_path.exists():
             return Response({"detail": "Archive manquante"}, status=status.HTTP_404_NOT_FOUND)
+        ttl = int(getattr(settings, "DOCUMENT_TTL_SECONDS", 300))
+        if batch.first_download_at is None:
+            batch.first_download_at = timezone.now()
+            batch.save(update_fields=["first_download_at"])
+            purge_batch_zip.apply_async(args=[batch.id], countdown=ttl)
+            _schedule_local_purge(str(zip_path), ttl)
+
+        # Planifie aussi la purge des PDFs individuels du batch
+        docs = Document.objects.filter(id__in=batch.documents)
+        for d in docs:
+            if not d.pdf_path:
+                continue
+            if d.first_download_at is None:
+                d.first_download_at = timezone.now()
+                d.save(update_fields=["first_download_at"])
+                purge_document_file.apply_async(args=[d.id], countdown=ttl)
+                _schedule_local_purge(d.pdf_path, ttl)
+
         response = FileResponse(open(zip_path, "rb"), content_type="application/zip")
-        response["Content-Disposition"] = f'attachment; filename="{zip_path.name}"'
+        response["Content-Disposition"] = f'attachment; filename=\"{zip_path.name}\"'
         return response

@@ -39,18 +39,24 @@ class Command(BaseCommand):
         files = sorted([p for p in pdf_dir.iterdir() if p.is_file()], key=lambda p: p.stat().st_mtime, reverse=True)
         deleted = 0
 
-        if max_files is not None and max_files >= 0:
-            for p in files[max_files:]:
+        # Si aucun critère n'est fourni, on purge tout
+        if max_files is None and days is None:
+            for p in files:
                 p.unlink(missing_ok=True)
                 deleted += 1
-
-        if days is not None and days > 0:
-            import time
-
-            cutoff = time.time() - days * 86400
-            for p in list(pdf_dir.iterdir()):
-                if p.is_file() and p.stat().st_mtime < cutoff:
+        else:
+            if max_files is not None and max_files >= 0:
+                for p in files[max_files:]:
                     p.unlink(missing_ok=True)
                     deleted += 1
+
+            if days is not None and days > 0:
+                import time
+
+                cutoff = time.time() - days * 86400
+                for p in list(pdf_dir.iterdir()):
+                    if p.is_file() and p.stat().st_mtime < cutoff:
+                        p.unlink(missing_ok=True)
+                        deleted += 1
 
         self.stdout.write(self.style.SUCCESS(f"Purges effectuées dans {pdf_dir}. Fichiers supprimés: {deleted}."))
