@@ -1,0 +1,14 @@
+# LaTeX — fichiers générés
+*.pdf
+*.log
+*.aux
+*.out
+*.toc
+*.synctex.gz
+*.xdv
+*.fls
+*.fdb_latexmk
+
+# Dossiers temporaires
+_build/
+output/
