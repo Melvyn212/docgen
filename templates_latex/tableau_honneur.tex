@@ -1,0 +1,249 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper,landscape]{article}
+
+% =========================
+% MISE EN PAGE & LANGUE
+% =========================
+\usepackage[a4paper,landscape,margin=1.4cm]{geometry}
+\pagestyle{empty}
+\usepackage[french]{babel}
+
+% =========================
+% POLICES
+% =========================
+\usepackage{fontspec}
+\IfFontExistsTF{TeX Gyre Pagella}
+  {\setmainfont[Ligatures=TeX,Numbers=OldStyle]{TeX Gyre Pagella}}
+  {\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{Arial}}}
+\IfFontExistsTF{TeX Gyre Heros}{
+  \setsansfont[
+    SmallCapsFeatures={Letters=SmallCaps},
+    UprightFont = *,
+    BoldFont    = *-Bold,
+    ItalicFont  = *-Italic,
+    BoldItalicFont = *-BoldItalic
+  ]{TeX Gyre Heros}
+}{
+  \IfFontExistsTF{IBM Plex Sans}{
+    \setsansfont[SmallCapsFeatures={Letters=SmallCaps}]{IBM Plex Sans}
+  }{
+    \IfFontExistsTF{Latin Modern Sans}{
+      \setsansfont[SmallCapsFeatures={Letters=SmallCaps}]{Latin Modern Sans}
+    }{
+      \IfFontExistsTF{Arial}{\setsansfont{Arial}}{\setsansfont{Helvetica}}
+    }
+  }
+}
+
+% =========================
+% COULEURS
+% =========================
+\usepackage{xcolor}
+\definecolor{BgBronze}{HTML}{F3E6D8}
+\definecolor{BgSilver}{HTML}{F1F2F4}
+\definecolor{BgGold}{HTML}{FBF3D0}
+\definecolor{Bronze}{HTML}{8C6239}
+\definecolor{Silver}{HTML}{8A8D8F}
+\definecolor{GoldMedal}{HTML}{C9A24D}
+\definecolor{Primary}{HTML}{1E3A8A}
+\definecolor{Muted}{HTML}{475569}
+\color{Primary}
+
+% =========================
+% LOGIQUE DISTINCTION
+% =========================
+\usepackage{xfp}
+\usepackage{xstring}
+\newcommand{\valfallback}[2]{\IfBeginWith{#1}{<<}{#2}{#1}}
+\newcommand{\setflag}[2]{%
+  \csname #1false\endcsname%
+  \IfStrEq{#2}{1}{\csname #1true\endcsname}{%
+    \IfStrEq{#2}{true}{\csname #1true\endcsname}{%
+      \IfStrEq{#2}{yes}{\csname #1true\endcsname}{}}}}
+
+\ifdefined\AVGOVERRIDE
+  \def\rawavg{\AVGOVERRIDE}
+\else
+  \def\rawavg{<<AVG>>}
+\fi
+\IfBeginWith{\rawavg}{<<}{\def\moyenne{15.0}}{\def\moyenne{\rawavg}}
+\edef\moyennecent{\fpeval{round(\moyenne*100,0)}}
+
+\newcommand{\THtitre}{}
+\newcommand{\THcouleur}{}
+\newcommand{\THfond}{}
+\ifnum\moyennecent<1200
+  \renewcommand{\THtitre}{TABLEAU D’HONNEUR — ENCOURAGEMENTS}
+  \renewcommand{\THcouleur}{Bronze}
+  \renewcommand{\THfond}{BgBronze}
+\else\ifnum\moyennecent<1400
+  \renewcommand{\THtitre}{TABLEAU D’HONNEUR — ENCOURAGEMENTS}
+  \renewcommand{\THcouleur}{Bronze}
+  \renewcommand{\THfond}{BgBronze}
+\else\ifnum\moyennecent<1600
+  \renewcommand{\THtitre}{TABLEAU D’HONNEUR — FÉLICITATIONS}
+  \renewcommand{\THcouleur}{Silver}
+  \renewcommand{\THfond}{BgSilver}
+\else
+  \renewcommand{\THtitre}{TABLEAU D’HONNEUR — EXCELLENCE}
+  \renewcommand{\THcouleur}{GoldMedal}
+  \renewcommand{\THfond}{BgGold}
+\fi\fi\fi
+\pagecolor{\THfond}
+
+% =========================
+% DONNÉES / PLACEHOLDERS
+% =========================
+\providecommand{\SCHOOLNAME}{\valfallback{<<SCHOOL_NAME>>}{Lycée Exemple International}}
+\providecommand{\SCHOOLCITY}{\valfallback{<<SCHOOL_CITY>>}{Ouagadougou}}
+\providecommand{\TERMVAL}{\valfallback{<<TERM>>}{T1}}
+\providecommand{\ACADEMICYEARVAL}{\valfallback{<<ACADEMIC_YEAR>>}{2025--2026}}
+\providecommand{\STUDENTNAME}{\valfallback{<<STUDENT_NAME>>}{Nom Prénom}}
+\providecommand{\CLASSLEVEL}{\valfallback{<<CLASS_LEVEL>>}{Classe}}
+\providecommand{\RANKVAL}{\valfallback{<<RANK>>}{1}}
+\providecommand{\CLASSSIZEVAL}{\valfallback{<<CLASS_SIZE>>}{30}}
+\providecommand{\TODAYVAL}{\valfallback{<<TODAY>>}{\today}}
+
+\newcommand{\logopath}{./assets/logo.png}
+\IfStrEq{<<LOGO_PATH>>}{}{%
+}{%
+  \IfBeginWith{<<LOGO_PATH>>}{<<}{}{%
+    \renewcommand{\logopath}{<<LOGO_PATH>>}}}
+\newif\ifhaslogo
+\setflag{haslogo}{<<HAS_LOGO>>}
+\IfFileExists{\logopath}{}{%
+  \haslogofalse
+}
+
+\newcommand{\watermarkpath}{./assets/filigrane.pdf}
+\IfStrEq{<<WATERMARK_PATH>>}{}{%
+}{%
+  \IfBeginWith{<<WATERMARK_PATH>>}{<<}{}{%
+    \renewcommand{\watermarkpath}{<<WATERMARK_PATH>>}}}
+\newif\ifhaswm
+\haswmtrue
+\def\rawwm{<<HAS_WATERMARK>>}
+\IfStrEq{\rawwm}{0}{\haswmfalse}{}%
+\IfStrEq{\rawwm}{false}{\haswmfalse}{}%
+\IfStrEq{\rawwm}{no}{\haswmfalse}{}%
+\IfFileExists{\watermarkpath}{}{%
+  \haswmfalse
+}
+
+% =========================
+% PACKAGES GRAPHIQUES MINIMAUX
+% =========================
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+
+% =========================
+% DOCUMENT
+% =========================
+\begin{document}
+
+% CADRES LÉGERS
+\begin{tikzpicture}[remember picture,overlay]
+  \draw[\THcouleur, line width=2.6pt, rounded corners=32pt]
+    ($(current page.north west)+(1.1cm,-1.1cm)$)
+    rectangle
+    ($(current page.south east)+(-1.1cm,1.1cm)$);
+  \draw[Primary, line width=1.1pt, rounded corners=26pt]
+    ($(current page.north west)+(1.9cm,-1.9cm)$)
+    rectangle
+    ($(current page.south east)+(-1.9cm,1.9cm)$);
+\end{tikzpicture}
+
+% FILIGRANE (fichier précompilé standalone)
+\begin{tikzpicture}[remember picture,overlay]
+  \ifhaswm
+  \node at (current page.center) {%
+    \includegraphics[width=.7\paperwidth,height=.7\paperheight,keepaspectratio]{\watermarkpath}%
+  };
+  \fi
+\end{tikzpicture}
+
+% CONTENU
+\begin{tikzpicture}[remember picture,overlay]
+\node at (current page.center) {
+\parbox[c][14cm][c]{25cm}{
+\centering
+
+\ifhaslogo
+  \includegraphics[width=3cm]{\logopath}
+\fi
+
+\vspace{0.5cm}
+
+{\color{\THcouleur}\sffamily\bfseries\Large RÉPUBLIQUE DU BURKINA FASO}
+
+\vspace{0.15cm}
+
+{\color{\THcouleur}\sffamily\bfseries\large Ministère de l’Éducation Nationale}
+
+\vspace{0.35cm}
+
+{\color{\THcouleur}\bfseries\Large \SCHOOLNAME}
+
+\vspace{0.9cm}
+
+{\color{\THcouleur}\sffamily\bfseries\Huge \MakeUppercase{\THtitre}}
+
+\vspace{0.35cm}
+
+{\Large Trimestre \TERMVAL{} — Année scolaire \ACADEMICYEARVAL}
+
+\vspace{1.1cm}
+
+Le présent tableau d’honneur est décerné à
+
+\vspace{0.55cm}
+
+{\bfseries\Huge\addfontfeatures{LetterSpace=2}
+\STUDENTNAME}
+
+\vspace{0.55cm}
+
+Élève de \textbf{\CLASSLEVEL}, pour ses résultats académiques remarquables\\
+et son engagement exemplaire.
+
+\vspace{0.85cm}
+
+\large
+Moyenne générale : \textbf{\moyenne\ / 20}
+\hspace{2cm}
+Rang : \textbf{\RANKVAL\textsuperscript{e} / \CLASSSIZEVAL}
+
+\vspace{0.35cm}
+
+Distinction :
+\textbf{\textcolor{\THcouleur}{
+\ifnum\moyennecent<1600
+  \ifnum\moyennecent<1400 ENCOURAGEMENTS\else FÉLICITATIONS\fi
+\else
+  EXCELLENCE
+\fi
+}}
+
+\vspace{1.3cm}
+
+\begin{minipage}{0.45\linewidth}
+\centering
+Le Professeur principal\\[2.4cm]
+\rule{6.2cm}{0.7pt}
+\end{minipage}
+\hfill
+\begin{minipage}{0.45\linewidth}
+\centering
+Le Chef d’établissement\\[2.4cm]
+\rule{6.2cm}{0.7pt}
+\end{minipage}
+
+\vspace{-0.25cm}
+{\color{Muted}\small Fait à \SCHOOLCITY, le \TODAYVAL}
+
+}
+};
+\end{tikzpicture}
+
+\end{document}

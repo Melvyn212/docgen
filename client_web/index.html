@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Client Documents Scolaires</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6fb;color:#0f1e3c;display:flex;justify-content:center;padding:24px;}
+    .card{background:#fff;max-width:560px;width:100%;padding:24px;border-radius:16px;box-shadow:0 14px 30px rgba(0,0,0,.12);}
+    .row{display:flex;gap:12px;}
+    .field{margin-bottom:14px;flex:1;}
+    label{display:block;font-weight:600;margin-bottom:6px;}
+    input,select,button{width:100%;padding:10px 12px;border:1px solid #ced4e0;border-radius:10px;font-size:14px;}
+    button{background:#1e3a8a;color:#fff;border:none;font-weight:700;cursor:pointer;}
+    button:disabled{opacity:.6;cursor:not-allowed;}
+    .btn-ghost{background:#eef1f8;color:#0f1e3c;border:1px solid #ced4e0;}
+    .btn-active{background:#1e3a8a;color:#fff;}
+    .log{background:#0f1e3c;color:#e0e6ff;padding:12px;border-radius:10px;font-family:monospace;font-size:13px;max-height:180px;overflow:auto;}
+    .status{margin-top:10px;font-weight:700;}
+    a.btn{display:inline-block;margin-top:10px;padding:10px 12px;background:#0f9b4c;color:#fff;border-radius:10px;text-decoration:none;font-weight:700;}
+    .metrics{margin-top:18px;border:1px solid #e1e5ef;border-radius:12px;padding:12px;background:#f8f9fd;}
+    .metrics-header{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-bottom:8px;}
+    .metrics-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+    .metric{background:#fff;border:1px solid #e1e5ef;border-radius:10px;padding:10px;text-align:center;}
+    .metric-label{color:#5f6b84;font-size:13px;margin-bottom:4px;}
+    .metric-value{font-size:20px;font-weight:800;}
+    .metric.pending{color:#d97706;}
+    .metric.ready{color:#059669;}
+    .metric.failed{color:#dc2626;}
+    .metric.timeout{color:#b91c1c;}
+    .metrics-status{font-size:12px;color:#5f6b84;}
+    .loadtest{margin-top:18px;border:1px dashed #d0d6e6;border-radius:12px;padding:12px;background:#fbfcff;}
+    .loadtest h4{margin:0 0 8px 0;font-size:15px;}
+    .load-buttons{display:flex;gap:8px;flex-wrap:wrap;}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid #ced4e0;background:#eef1f8;color:#0f1e3c;font-weight:700;cursor:pointer;}
+    .pill:disabled{opacity:0.6;cursor:not-allowed;}
+    .load-progress{font-size:13px;color:#5f6b84;margin-top:8px;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Client Documents Scolaires</h2>
+    <form id="form">
+      <div class="row">
+        <div class="field">
+          <label>Utilisateur</label>
+          <input name="user" required placeholder="admin">
+        </div>
+        <div class="field">
+          <label>Mot de passe</label>
+          <input type="password" name="password" required>
+        </div>
+      </div>
+      <div class="field">
+        <label>Type</label>
+        <div class="row" style="gap:8px;">
+          <button type="button" id="btn-bulletin" class="btn-ghost" data-type="bulletin">Bulletin</button>
+          <button type="button" id="btn-honor" class="btn-ghost" data-type="honor">Tableau d’honneur</button>
+        </div>
+        <input type="hidden" name="type" value="bulletin">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Student ID</label>
+          <input name="student" type="number" required>
+        </div>
+        <div class="field">
+          <label>Trimestre</label>
+          <select name="term">
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+          </select>
+        </div>
+      </div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="force_new" name="force_new" checked style="width:auto;">
+      <label for="force_new" style="margin:0;">Forcer une nouvelle génération (écrase l’existante)</label>
+    </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="mode_stream" name="mode_stream" style="width:auto;">
+        <label for="mode_stream" style="margin:0;">Mode streaming (pas de stockage, PDF direct)</label>
+      </div>
+      <div class="field">
+        <label>Host</label>
+        <input name="host" value="http://127.0.0.1:8000" required>
+      </div>
+      <button type="submit">Générer</button>
+    </form>
+    <div class="status" id="status"></div>
+    <div class="log" id="log"></div>
+    <a class="btn" id="download" href="#" target="_blank" style="display:none;">Télécharger le PDF</a>
+
+    <div class="metrics">
+      <div class="metrics-header">
+        <span>Perf en temps réel</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="metrics-status" id="metrics-status">Déconnecté</span>
+          <button type="button" class="btn-ghost" id="metrics-reconnect" style="width:auto;padding:8px 10px;">Reconnecter</button>
+        </div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric pending">
+          <div class="metric-label">En attente</div>
+          <div class="metric-value" id="metric-pending">-</div>
+        </div>
+        <div class="metric timeout">
+          <div class="metric-label">Stale/Timeout</div>
+          <div class="metric-value" id="metric-timeout">-</div>
+        </div>
+        <div class="metric ready">
+          <div class="metric-label">Prêts</div>
+          <div class="metric-value" id="metric-ready">-</div>
+        </div>
+        <div class="metric failed">
+          <div class="metric-label">En échec</div>
+          <div class="metric-value" id="metric-failed">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Temps moyen (s)</div>
+          <div class="metric-value" id="metric-avg">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Temps total (s)</div>
+          <div class="metric-value" id="metric-total">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Doc/s</div>
+          <div class="metric-value" id="metric-rate">-</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Elapsed global (s)</div>
+          <div class="metric-value" id="metric-elapsed">-</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="loadtest">
+      <h4>Simulation de charge (async)</h4>
+      <div class="load-buttons">
+        <button type="button" class="pill" data-load="100">100 requêtes</button>
+        <button type="button" class="pill" data-load="1000">1000 requêtes</button>
+        <button type="button" class="pill" data-load="10000">10000 requêtes</button>
+      </div>
+      <div class="load-progress" id="load-progress">Prêt</div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("form");
+    const logBox = document.getElementById("log");
+    const statusBox = document.getElementById("status");
+    const download = document.getElementById("download");
+    const typeInput = form.querySelector('input[name="type"]');
+    const buttons = [document.getElementById("btn-bulletin"), document.getElementById("btn-honor")];
+    const metricPending = document.getElementById("metric-pending");
+    const metricTimeout = document.getElementById("metric-timeout");
+    const metricReady = document.getElementById("metric-ready");
+    const metricFailed = document.getElementById("metric-failed");
+    const metricAvg = document.getElementById("metric-avg");
+    const metricTotal = document.getElementById("metric-total");
+    const metricRate = document.getElementById("metric-rate");
+    const metricElapsed = document.getElementById("metric-elapsed");
+    const metricsStatus = document.getElementById("metrics-status");
+    const metricsReconnect = document.getElementById("metrics-reconnect");
+    const loadButtons = Array.from(document.querySelectorAll(".load-buttons .pill"));
+    const loadProgress = document.getElementById("load-progress");
+    let ws = null;
+    let loadRunning = false;
+    let latestMetrics = {pending:0, ready:0, failed:0};
+    let waiters = [];
+
+    function setType(type){
+      typeInput.value = type;
+      buttons.forEach(b=>{
+        if(b.dataset.type === type){
+          b.classList.add("btn-active");
+          b.classList.remove("btn-ghost");
+        }else{
+          b.classList.remove("btn-active");
+          b.classList.add("btn-ghost");
+        }
+      });
+    }
+    buttons.forEach(b=>b.addEventListener("click", ()=>setType(b.dataset.type)));
+    setType("bulletin");
+
+    function log(msg){
+      logBox.textContent = msg + "\n" + logBox.textContent;
+    }
+
+    function wsUrlFromHost(host){
+      try{
+        const u = new URL(host);
+        u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+        u.pathname = "/ws/documents/metrics/";
+        return u.toString();
+      }catch(err){
+        return "";
+      }
+    }
+
+    function updateMetrics(data){
+      metricPending.textContent = data.pending ?? "-";
+      metricTimeout.textContent = data.stale_pending ?? "-";
+      metricReady.textContent = data.ready ?? "-";
+      metricFailed.textContent = data.failed ?? "-";
+      metricAvg.textContent = data.avg_seconds ?? "-";
+      metricTotal.textContent = data.total_seconds ?? "-";
+      metricRate.textContent = data.docs_per_sec ?? "-";
+      metricElapsed.textContent = data.elapsed_seconds ?? "-";
+      latestMetrics = {
+        pending: Number(data.pending ?? 0),
+        ready: Number(data.ready ?? 0),
+        failed: Number(data.failed ?? 0),
+        stale_pending: Number(data.stale_pending ?? 0),
+        avg_seconds: data.avg_seconds,
+        total_seconds: data.total_seconds,
+      };
+      // Notify any waiter waiting for thresholds
+      waiters = waiters.filter(w=>{
+        if(w.condition(latestMetrics)){
+          w.resolve();
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function setMetricsStatus(text){
+      metricsStatus.textContent = text;
+    }
+
+    function connectMetrics(){
+      const host = form.querySelector('input[name="host"]').value.trim();
+      const wsUrl = wsUrlFromHost(host);
+      if(!wsUrl){
+        setMetricsStatus("URL invalide");
+        return;
+      }
+      if(ws){
+        ws.close();
+      }
+      ws = new WebSocket(wsUrl);
+      ws.onopen = ()=> setMetricsStatus("Connecté");
+      ws.onclose = ()=> setMetricsStatus("Déconnecté");
+      ws.onerror = ()=> setMetricsStatus("Erreur websocket");
+      ws.onmessage = (event)=>{
+        try{
+          const data = JSON.parse(event.data);
+          if(data.type === "metrics"){
+            updateMetrics(data);
+          }
+        }catch(err){
+          console.warn("Message WS invalide", err);
+        }
+      };
+    }
+
+    metricsReconnect.addEventListener("click", connectMetrics);
+    form.querySelector('input[name="host"]').addEventListener("change", connectMetrics);
+
+    async function apiFetch(url, opts){
+      const res = await fetch(url, opts);
+      const body = await res.text();
+      if(!res.ok){
+        let detail = body;
+        try{
+          const parsed = JSON.parse(body);
+          detail = parsed.detail || body;
+        }catch(_){}
+        throw new Error(`${res.status} ${res.statusText} - ${detail}`);
+      }
+      return body ? JSON.parse(body) : {};
+    }
+
+    async function poll(host, id, auth){
+      for(let i=0;i<30;i++){
+        const data = await apiFetch(`${host}/api/documents/${id}/download/`, {headers:{Authorization:auth}});
+        if(data.path || data.pdf_url){
+          statusBox.textContent = "Document prêt";
+          download.href = data.path || data.pdf_url;
+          download.style.display = "inline-block";
+          return;
+        }
+        statusBox.textContent = "En attente (polling)...";
+        await new Promise(r=>setTimeout(r,2000));
+      }
+      statusBox.textContent = "Timeout avant disponibilité du PDF";
+    }
+
+    form.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(form);
+      const user = fd.get("user");
+      const password = fd.get("password");
+      const host = fd.get("host").replace(/\/$/,"");
+      const type = fd.get("type");
+      const useStream = fd.get("mode_stream") ? true : false;
+      const endpoint = useStream
+        ? (type === "bulletin" ? "/api/documents/bulletin/stream/" : "/api/documents/honor-board/stream/")
+        : (type === "bulletin" ? "/api/documents/bulletin/" : "/api/documents/honor-board/");
+      const auth = "Basic " + btoa(`${user}:${password}`);
+      statusBox.textContent = "Envoi...";
+      download.style.display = "none";
+      logBox.textContent = "";
+      try{
+        const payload = {
+          student_id: Number(fd.get("student")),
+          term: fd.get("term"),
+          type,
+          force_new: fd.get("force_new") ? true : false
+        };
+        if(useStream){
+          const res = await fetch(`${host}${endpoint}`, {
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "Authorization": auth
+            },
+            body: JSON.stringify(payload)
+          });
+          if(!res.ok){
+            const text = await res.text();
+            throw new Error(`${res.status} ${res.statusText} - ${text}`);
+          }
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          statusBox.textContent = "Document prêt (streaming)";
+          download.href = url;
+          download.download = `${type}_${payload.student_id}_${payload.term}.pdf`;
+          download.style.display = "inline-block";
+          log("PDF reçu en streaming (non stocké)");
+        } else {
+          const resp = await apiFetch(`${host}${endpoint}`, {
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "Authorization": auth
+            },
+            body: JSON.stringify(payload)
+          });
+          log(`Créé id=${resp.id} status=${resp.status}`);
+          if(resp.pdf_url){
+            statusBox.textContent = "Document prêt (synchrone)";
+            download.href = resp.pdf_url;
+            download.style.display = "inline-block";
+          }else{
+            statusBox.textContent = "Génération en cours...";
+            await poll(host, resp.id, auth);
+          }
+        }
+      }catch(err){
+        statusBox.textContent = "Erreur";
+        log(err.message);
+      }
+    });
+
+    // Connexion initiale aux métriques
+    connectMetrics();
+
+    function disableLoadButtons(disabled){
+      loadButtons.forEach(b=> b.disabled = disabled);
+    }
+
+    function waitForReadyTarget(targetReady, timeoutMs=120000){
+      return new Promise((resolve, reject)=>{
+        const deadline = Date.now() + timeoutMs;
+        const condition = (m)=> m.ready >= targetReady;
+        const check = ()=>{
+          if(condition(latestMetrics)) return resolve();
+          if(Date.now() > deadline) return reject(new Error("Timeout attente READY"));
+          waiters.push({condition, resolve});
+        };
+        check();
+      });
+    }
+
+    async function simulateLoad(total){
+      if(loadRunning) return;
+      loadRunning = true;
+      disableLoadButtons(true);
+      loadProgress.textContent = `Démarrage de ${total} requêtes...`;
+      // Reset métriques serveur pour un run propre
+      try{
+        const host = form.querySelector('input[name="host"]').value.replace(/\/$/,"");
+        const fdAuth = new FormData(form);
+        const auth = "Basic " + btoa(`${fdAuth.get("user")}:${fdAuth.get("password")}`);
+        await fetch(`${host}/api/metrics/reset/`, {method:"POST", headers: {"Authorization": auth}});
+      }catch(_){}
+      const fd = new FormData(form);
+      const user = fd.get("user");
+      const password = fd.get("password");
+      const host = fd.get("host").replace(/\/$/,"");
+      const type = fd.get("type");
+      const endpoint = type === "bulletin" ? "/api/documents/bulletin/" : "/api/documents/honor-board/";
+      const auth = "Basic " + btoa(`${user}:${password}`);
+      const payloadBase = {
+        student_id: Number(fd.get("student")),
+        term: fd.get("term"),
+        type,
+        force_new: true
+      };
+
+      let completed = 0;
+      let success = 0;
+      let failed = 0;
+      const readyBaseline = latestMetrics.ready || 0;
+      const concurrency = 20;
+      let cursor = 0;
+      const t0 = performance.now();
+
+      async function worker(){
+        while(true){
+          const i = cursor++;
+          if(i >= total) break;
+          try{
+            await apiFetch(`${host}${endpoint}`, {
+              method:"POST",
+              headers:{
+                "Content-Type":"application/json",
+                "Authorization": auth
+              },
+              body: JSON.stringify(payloadBase)
+            });
+            success++;
+          }catch(err){
+            failed++;
+          }finally{
+            completed++;
+            if(completed % 50 === 0 || completed === total){
+              loadProgress.textContent = `Progression ${completed}/${total} — OK: ${success} / KO: ${failed}`;
+            }
+          }
+        }
+      }
+
+      await Promise.all(Array.from({length: concurrency}, worker));
+
+      // Attente de la complétion réelle via les métriques WS
+      const targetReady = readyBaseline + success;
+      try{
+        await waitForReadyTarget(targetReady, 180000);
+      }catch(err){
+        // On continue mais on note l'absence de signal complet
+        loadProgress.textContent = `Terminé ${completed}/${total} — OK: ${success} / KO: ${failed} (attente READY expirée)`;
+        disableLoadButtons(false);
+        loadRunning = false;
+        return;
+      }
+
+      const elapsedSec = (performance.now() - t0) / 1000;
+      const docsPerSec = elapsedSec > 0 ? (success / elapsedSec).toFixed(2) : "N/A";
+      loadProgress.textContent = `Terminé ${completed}/${total} — OK: ${success} / KO: ${failed} | Temps réel: ${elapsedSec.toFixed(2)}s | Débit: ${docsPerSec} doc/s`;
+      disableLoadButtons(false);
+      loadRunning = false;
+    }
+
+    loadButtons.forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const total = Number(btn.dataset.load);
+        simulateLoad(total);
+      });
+    });
+  </script>
+</body>
+</html>

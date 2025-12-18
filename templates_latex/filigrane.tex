@@ -1,0 +1,47 @@
+% !TEX program = xelatex
+\documentclass[tikz,border=0pt]{standalone}
+
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\definecolor{Gold}{HTML}{C9A24D}
+
+% Recherche du fichier filigrane uniquement dans assets/
+\newcommand{\wmfile}{../assets/filigrane.pdf}
+\IfFileExists{../assets/filigrane.pdf}{\renewcommand{\wmfile}{../assets/filigrane.pdf}}{}
+\IfFileExists{../assets/filigrame.pdf}{\renewcommand{\wmfile}{../assets/filigrame.pdf}}{}
+\IfFileExists{../assets/filigrane.png}{\renewcommand{\wmfile}{../assets/filigrane.png}}{}
+\IfFileExists{../assets/filigrame.png}{\renewcommand{\wmfile}{../assets/filigrame.png}}{}
+
+\begin{document}
+\begin{tikzpicture}
+  \draw[Gold,opacity=0.06,line width=1pt] (0,0) circle (5.2);
+  \draw[Gold,opacity=0.05,line width=0.8pt] (0,0) circle (3.8);
+
+  % Guilloché léger (formes lissées, échantillonnage augmenté)
+  \foreach \k in {0,60,120}{
+    \draw[Gold,opacity=0.045,line width=0.35pt]
+      plot[domain=0:360,samples=240,smooth,variable=\x]
+      ({(4.4+0.25*cos(5*\x))*cos(\x+\k)},
+       {(4.4+0.25*cos(5*\x))*sin(\x+\k)});
+  }
+  \foreach \k in {30,150,270}{
+    \draw[Gold,opacity=0.04,line width=0.3pt]
+      plot[domain=0:360,samples=200,smooth,variable=\x]
+      ({(3.1+0.18*cos(6*\x))*cos(\x+\k)},
+       {(3.1+0.18*cos(6*\x))*sin(\x+\k)});
+  }
+  \foreach \a in {0,15,...,345}{
+    \node[opacity=0.04,text=Gold] at (\a:4.8) {\tiny$\bullet$};
+  }
+
+  % Cercles concentriques (effet infini mais léger)
+  \foreach \r/\op in {3.4/0.05,2.8/0.045,2.2/0.04,1.6/0.035,1.0/0.03,0.55/0.028}{
+    \draw[Gold,opacity=\op,line width=0.32pt] (0,0) circle (\r);
+  }
+
+  \node[opacity=0.05] at (0,0) {
+    \includegraphics[width=5cm]{\wmfile}
+  };
+\end{tikzpicture}
+\end{document}

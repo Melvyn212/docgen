@@ -1,0 +1,25 @@
+{
+  "colors": {
+    "bg": "F9FAFB",
+    "card": "FFFFFF",
+    "primary": "0F172A",
+    "muted": "64748B",
+    "footer": "1E3A8A"
+  },
+  "logo": {
+    "enabled": true,
+    "path": "assets/logo.png",
+    "override_school_logo": false
+  },
+  "watermark": {
+    "enabled": true,
+    "path": "assets/filigrane.pdf"
+  },
+  "school": {
+    "name": "Les Écoles de l'Honneur",
+    "country": "Burkina Faso",
+    "city": "Ouagadougou",
+    "phone": "226 25 30 40 50",
+    "email": "l@lesecolesdelhonneur.bf"
+  }
+}

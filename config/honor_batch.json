@@ -1,0 +1,18 @@
+{
+  "template": "templates_latex/tableau_honneur.tex",
+  "output_dir": "out_honor",
+  "job_prefix": "honor_",
+  "defaults": {
+    "school_name": "Le Creuset Plus Ouaga2000",
+    "school_city": "Ouagadougou",
+    "term": "T1",
+    "academic_year": "2025--2026",
+    "class_level": "Terminale D",
+    "class_size": "32"
+  },
+  "students": [
+    { "name": "Abdala Thomas Melvyn DEHUNDE-AGBLO",      "avg": 16.09, "rank": 1 },
+    { "name": "Anissa Sanou",         "avg": 12.5, "rank": 16 },
+    { "name": "Ismaël Sawadogo",      "avg": 15.5, "rank": 6  }
+  ]
+}

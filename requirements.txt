@@ -1,0 +1,8 @@
+Django>=4.2
+djangorestframework>=3.14
+celery>=5.3
+redis>=4.0
+boto3>=1.28
+psycopg2-binary>=2.9
+channels>=4.0
+daphne>=4.0
